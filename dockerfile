@@ -1,20 +1,38 @@
-FROM ubuntu:latest
+# Stage 1
+FROM alpine:latest AS builder
 
-RUN apt-get update && apt-get install -y gcc
+# Instala o compilador C para o Alpine
+RUN apk add --no-cache gcc musl-dev
+
+WORKDIR /app
+COPY . .
+
+# Compila tudo de uma vez
+RUN gcc interpretador.c -o interpretador && \
+    gcc AddDestination.c -o AddDestination && \
+    gcc apaga.c -o apaga && \
+    gcc conta.c -o conta && \
+    gcc CopyFile.c -o CopyFile && \
+    gcc Info.c -o Info && \
+    gcc ListFiles.c -o ListFiles && \
+    gcc procura.c -o procura && \
+    gcc Show.c -o Show
+
+# Stage 2
+FROM alpine:latest
 
 WORKDIR /app
 
-COPY . .
+COPY --from=builder /app/interpretador .
+COPY --from=builder /app/AddDestination .
+COPY --from=builder /app/apaga .
+COPY --from=builder /app/conta .
+COPY --from=builder /app/CopyFile .
+COPY --from=builder /app/Info .
+COPY --from=builder /app/ListFiles .
+COPY --from=builder /app/procura .
+COPY --from=builder /app/Show .
 
-RUN gcc interpretador.c -o interpretador
-
-RUN gcc AddDestination.c -o AddDestination
-RUN gcc apaga.c -o apaga
-RUN gcc conta.c -o conta
-RUN gcc CopyFile.c -o CopyFile
-RUN gcc Info.c -o Info
-RUN gcc ListFiles.c -o ListFiles
-RUN gcc procura.c -o procura
-RUN gcc Show.c -o Show
+ENV PATH="/app:${PATH}"
 
 ENTRYPOINT ["./interpretador"]
