@@ -5,277 +5,307 @@
 #include <stdio.h>
 #include <string.h>
 
-void parse_comando(char *input, char *args[]);
-void executar_simples(char *args[]);
-void redirecionar_saida(char *args[], char *ficheiro);
-void redirecionar_entrada(char *args[], char *ficheiro);
-void executar_pipe(char *args1[], char *args2[]);
+void analisar_comando(char *entrada, char *argumentos_comando[]);
+void executar_simples(char *argumentos_comando[]);
+void redirecionar_saida(char *argumentos_comando[], char *ficheiro);
+void redirecionar_entrada(char *argumentos_comando[], char *ficheiro);
+void executar_pipe(char *argumentos_primeiro[], char *argumentos_segundo[]);
 
 int main()
 {
-    char input[256];
+    char entrada[256];
 
     while (1)
     {
         printf("%% ");
         fflush(stdout);
 
-        if (fgets(input, sizeof(input), stdin) == NULL)
+        if (fgets(entrada, sizeof(entrada), stdin) == NULL)
         {
             break;
         }
 
-        // remover \n
-        input[strcspn(input, "\n")] = 0;
+        // remove o fim de linha
+        entrada[strcspn(entrada, "\n")] = 0;
 
-        // terminar
-        if (strcmp(input, "termina") == 0)
+        // termina o interpretador
+        if (strcmp(entrada, "termina") == 0)
         {
             break;
         }
 
-        // PIPE
-        if (strchr(input, '|'))
+        // executa comandos ligados por canal
+        if (strchr(entrada, '|'))
         {
-            char *parte1 = strtok(input, "|");
-            char *parte2 = strtok(NULL, "|");
+            char *primeira_parte = strtok(entrada, "|");
+            char *segunda_parte = strtok(NULL, "|");
 
             // limpar espaços
-            while (*parte1 == ' ')
-                parte1++;
-            while (*parte2 == ' ')
-                parte2++;
+            while (*primeira_parte == ' ')
+                primeira_parte++;
+            while (*segunda_parte == ' ')
+                segunda_parte++;
 
-            char *args1[20];
-            char *args2[20];
+            char *argumentos_primeiro[20];
+            char *argumentos_segundo[20];
 
-            parse_comando(parte1, args1);
-            parse_comando(parte2, args2);
+            analisar_comando(primeira_parte, argumentos_primeiro);
+            analisar_comando(segunda_parte, argumentos_segundo);
 
-            executar_pipe(args1, args2);
+            executar_pipe(argumentos_primeiro, argumentos_segundo);
         }
 
-        // REDIRECIONAMENTO SAÍDA >
-        else if (strchr(input, '>'))
+        // executa comando com redirecionamento de saída
+        else if (strchr(entrada, '>'))
         {
-            char *parte1 = strtok(input, ">");
+            char *parte_comando = strtok(entrada, ">");
             char *ficheiro = strtok(NULL, ">");
 
-            while (*parte1 == ' ')
-                parte1++;
+            while (*parte_comando == ' ')
+                parte_comando++;
             while (*ficheiro == ' ')
                 ficheiro++;
 
-            char *args[20];
-            parse_comando(parte1, args);
+            char *argumentos_comando[20];
+            analisar_comando(parte_comando, argumentos_comando);
 
-            redirecionar_saida(args, ficheiro);
+            redirecionar_saida(argumentos_comando, ficheiro);
         }
 
-        // REDIRECIONAMENTO ENTRADA <
-        else if (strchr(input, '<'))
+        // executa comando com redirecionamento de entrada
+        else if (strchr(entrada, '<'))
         {
-            char *parte1 = strtok(input, "<");
+            char *parte_comando = strtok(entrada, "<");
             char *ficheiro = strtok(NULL, "<");
 
-            while (*parte1 == ' ')
-                parte1++;
+            while (*parte_comando == ' ')
+                parte_comando++;
             while (*ficheiro == ' ')
                 ficheiro++;
 
-            char *args[20];
-            parse_comando(parte1, args);
+            char *argumentos_comando[20];
+            analisar_comando(parte_comando, argumentos_comando);
 
-            redirecionar_entrada(args, ficheiro);
+            redirecionar_entrada(argumentos_comando, ficheiro);
         }
 
-        // COMANDO NORMAL
+        // executa comando simples
         else
         {
-            char *args[20];
-            parse_comando(input, args);
+            char *argumentos_comando[20];
+            analisar_comando(entrada, argumentos_comando);
 
-            executar_simples(args);
+            executar_simples(argumentos_comando);
         }
     }
 
     return 0;
 }
 
-void parse_comando(char *input, char *args[])
+void analisar_comando(char *entrada, char *argumentos_comando[])
 {
-    int i = 0;
+    int indice = 0;
 
     // separa por espaços
-    char *token = strtok(input, " ");
+    char *elemento = strtok(entrada, " ");
 
-    while (token != NULL)
+    while (elemento != NULL)
     {
-        args[i++] = token;
-        token = strtok(NULL, " ");
+        argumentos_comando[indice++] = elemento;
+        elemento = strtok(NULL, " ");
     }
 
-    args[i] = NULL; // MUITO IMPORTANTE
+    argumentos_comando[indice] = NULL; // marca o fim da lista de argumentos
 }
 
-void executar_simples(char *args[])
+void executar_simples(char *argumentos_comando[])
 {
-    pid_t pid = fork();
+    pid_t processo = fork();
 
-    if (pid == -1)
+    if (processo == -1)
     {
         perror("Erro no fork");
         return;
     }
 
-    if (pid == 0)
+    if (processo == 0)
     {
-        // FILHO
-        execvp(args[0], args);
+        // processo filho
+        execvp(argumentos_comando[0], argumentos_comando);
 
         // só chega aqui se der erro
-        perror("Erro no exec");
+        perror("Erro ao executar");
         exit(1);
     }
     else
     {
-        // PAI
-        int status;
-        wait(&status);
+        // processo pai
+        int estado;
+        wait(&estado);
 
-        if (WIFEXITED(status))
+        if (WIFEXITED(estado))
         {
             printf("\n");
-            printf("Terminou comando com código %d\n", WEXITSTATUS(status));
+            printf("Terminou comando com código %d\n", WEXITSTATUS(estado));
         }
         else
         {
+            printf("\n");
             printf("Comando terminou de forma anormal\n");
         }
     }
 }
 
-void redirecionar_saida(char *args[], char *ficheiro)
+void redirecionar_saida(char *argumentos_comando[], char *ficheiro)
 {
-    pid_t pid = fork();
+    pid_t processo = fork();
 
-    if (pid == -1)
+    if (processo == -1)
     {
         perror("Erro no fork");
         return;
     }
 
-    if (pid == 0)
+    if (processo == 0)
     {
-        // FILHO
+        // processo filho
 
-        int fd = open(ficheiro, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-        if (fd < 0)
+        int descritor_ficheiro = open(ficheiro, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+        if (descritor_ficheiro < 0)
         {
             perror("Erro a abrir ficheiro");
             exit(1);
         }
 
-        dup2(fd, STDOUT_FILENO); // stdout → ficheiro
-        close(fd);
+        dup2(descritor_ficheiro, STDOUT_FILENO); // saída padrão para ficheiro
+        close(descritor_ficheiro);
 
-        execvp(args[0], args);
-        perror("Erro no exec");
+        execvp(argumentos_comando[0], argumentos_comando);
+        perror("Erro ao executar");
         exit(1);
     }
     else
     {
-        // PAI
-        int status;
-        wait(&status);
-        printf("Terminou comando com código %d\n", WEXITSTATUS(status));
+        // processo pai
+        int estado;
+        wait(&estado);
+
+        if (WIFEXITED(estado))
+        {
+            printf("\n");
+            printf("Terminou comando com código %d\n", WEXITSTATUS(estado));
+        }
+        else
+        {
+            printf("\n");
+            printf("Comando terminou de forma anormal\n");
+        }
     }
 }
 
-void redirecionar_entrada(char *args[], char *ficheiro)
+void redirecionar_entrada(char *argumentos_comando[], char *ficheiro)
 {
-    pid_t pid = fork();
+    pid_t processo = fork();
 
-    if (pid == -1)
+    if (processo == -1)
     {
         perror("Erro no fork");
         return;
     }
 
-    if (pid == 0)
+    if (processo == 0)
     {
-        // FILHO
+        // processo filho
 
-        int fd = open(ficheiro, O_RDONLY);
-        if (fd < 0)
+        int descritor_ficheiro = open(ficheiro, O_RDONLY);
+        if (descritor_ficheiro < 0)
         {
             perror("Erro a abrir ficheiro");
             exit(1);
         }
 
-        dup2(fd, STDIN_FILENO); // stdin ← ficheiro
-        close(fd);
+        dup2(descritor_ficheiro, STDIN_FILENO); // entrada padrão a partir do ficheiro
+        close(descritor_ficheiro);
 
-        execvp(args[0], args);
-        perror("Erro no exec");
+        execvp(argumentos_comando[0], argumentos_comando);
+        perror("Erro ao executar");
         exit(1);
     }
     else
     {
-        // PAI
-        int status;
-        wait(&status);
-        printf("Terminou comando com código %d\n", WEXITSTATUS(status));
+        // processo pai
+        int estado;
+        wait(&estado);
+
+        if (WIFEXITED(estado))
+        {
+            printf("\n");
+            printf("Terminou comando com código %d\n", WEXITSTATUS(estado));
+        }
+        else
+        {
+            printf("\n");
+            printf("Comando terminou de forma anormal\n");
+        }
     }
 }
 
-void executar_pipe(char *args1[], char *args2[])
+void executar_pipe(char *argumentos_primeiro[], char *argumentos_segundo[])
 {
-    int fd[2];
+    int descritores_canal[2];
 
-    if (pipe(fd) == -1)
+    if (pipe(descritores_canal) == -1)
     {
-        perror("Erro no pipe");
+        perror("Erro no canal");
         return;
     }
 
-    pid_t pid1 = fork();
+    pid_t primeiro_processo = fork();
 
-    if (pid1 == 0)
+    if (primeiro_processo == 0)
     {
-        // FILHO 1 → escreve no pipe
+        // primeiro filho escreve no canal
 
-        dup2(fd[1], STDOUT_FILENO); // stdout → pipe
-        close(fd[0]);               // não usa leitura
-        close(fd[1]);
+        dup2(descritores_canal[1], STDOUT_FILENO); // saída padrão para o canal
+        close(descritores_canal[0]);               // não usa leitura
+        close(descritores_canal[1]);
 
-        execvp(args1[0], args1);
-        perror("Erro exec 1");
+        execvp(argumentos_primeiro[0], argumentos_primeiro);
+        perror("Erro ao executar 1");
         exit(1);
     }
 
-    pid_t pid2 = fork();
+    pid_t segundo_processo = fork();
 
-    if (pid2 == 0)
+    if (segundo_processo == 0)
     {
-        // FILHO 2 → lê do pipe
+        // segundo filho lê do canal
 
-        dup2(fd[0], STDIN_FILENO); // stdin ← pipe
-        close(fd[1]);              // não usa escrita
-        close(fd[0]);
+        dup2(descritores_canal[0], STDIN_FILENO); // entrada padrão a partir do canal
+        close(descritores_canal[1]);              // não usa escrita
+        close(descritores_canal[0]);
 
-        execvp(args2[0], args2);
-        perror("Erro exec 2");
+        execvp(argumentos_segundo[0], argumentos_segundo);
+        perror("Erro ao executar 2");
         exit(1);
     }
 
-    // PAI
-    close(fd[0]);
-    close(fd[1]);
+    // processo pai
+    close(descritores_canal[0]);
+    close(descritores_canal[1]);
 
-    int status1, status2;
-    wait(&status1);
-    wait(&status2);
-
-    printf("Terminou pipe com código %d\n", WEXITSTATUS(status2));
+    int estado_primeiro;
+    int estado_segundo;
+    wait(&estado_primeiro);
+    wait(&estado_segundo);
+    if (WIFEXITED(estado_segundo))
+    {
+        printf("\n");
+        printf("Terminou encadeamento com código %d\n", WEXITSTATUS(estado_segundo));
+    }
+    else
+    {
+        printf("\n");
+        printf("Comando terminou de forma anormal\n");
+    }
 }

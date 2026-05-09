@@ -1,5 +1,5 @@
-# Stage 1
-FROM alpine:latest AS builder
+# Etapa 1
+FROM alpine:latest AS construtor
 
 # Instala o compilador C para o Alpine
 RUN apk add --no-cache gcc musl-dev
@@ -8,30 +8,30 @@ WORKDIR /app
 COPY . .
 
 # Compila tudo de uma vez
-RUN gcc interpretador.c -o interpretador && \
-    gcc AddDestination.c -o AddDestination && \
-    gcc apaga.c -o apaga && \
-    gcc conta.c -o conta && \
-    gcc CopyFile.c -o CopyFile && \
-    gcc Info.c -o Info && \
-    gcc ListFiles.c -o ListFiles && \
-    gcc procura.c -o procura && \
-    gcc Show.c -o Show
+RUN gcc Interpretador.c -o interpretador && \
+    gcc Acrescenta.c -o acrescenta && \
+    gcc Apaga.c -o apaga && \
+    gcc Conta.c -o conta && \
+    gcc Copia.c -o copia && \
+    gcc Informa.c -o informa && \
+    gcc Lista.c -o lista && \
+    gcc Procura.c -o procura && \
+    gcc Mostra.c -o mostra
 
-# Stage 2
+# Etapa 2
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/interpretador .
-COPY --from=builder /app/AddDestination .
-COPY --from=builder /app/apaga .
-COPY --from=builder /app/conta .
-COPY --from=builder /app/CopyFile .
-COPY --from=builder /app/Info .
-COPY --from=builder /app/ListFiles .
-COPY --from=builder /app/procura .
-COPY --from=builder /app/Show .
+COPY --from=construtor /app/interpretador .
+COPY --from=construtor /app/acrescenta .
+COPY --from=construtor /app/apaga .
+COPY --from=construtor /app/conta .
+COPY --from=construtor /app/copia .
+COPY --from=construtor /app/informa .
+COPY --from=construtor /app/lista .
+COPY --from=construtor /app/procura .
+COPY --from=construtor /app/mostra .
 
 ENV PATH="/app:${PATH}"
 

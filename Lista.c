@@ -1,60 +1,60 @@
+#define _DEFAULT_SOURCE
 #include <fcntl.h>
 #include <unistd.h>
-#include <dirent.h>   // Para opendir e readdir
-#include <sys/stat.h> // Para distinguir tipo de ficheiro
+#include <dirent.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[])
+int main(int numero_argumentos, char *argumentos[])
 {
-    char *path;
+    char *caminho;
 
     // vê se é suposto mostrar a diretoria atual (por defeito) ou outra qualquer
-    if (argc < 2)
+    if (numero_argumentos < 2)
     {
-        path = ".";
+        caminho = ".";
     }
     else
     {
-        path = argv[1];
+        caminho = argumentos[1];
     }
 
     // abre a diretoria
-    DIR *dir = opendir(path);
-    if (dir == NULL)
+    DIR *diretoria = opendir(caminho);
+    if (diretoria == NULL)
     {
-        write(STDERR_FILENO, "Error trying to open the directory.\n", 37);
+        write(STDERR_FILENO, "Erro ao abrir a diretoria.\n", sizeof("Erro ao abrir a diretoria.\n") - 1);
         return 1;
     }
 
-    // 3. dirent é uma struct que contem as informações dos ficheiros de uma diretoria
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
+    // dirent é uma estrutura que contém informações dos ficheiros de uma diretoria
+    struct dirent *entrada;
+    while ((entrada = readdir(diretoria)) != NULL)
     {
 
         // Ignorar os diretórios especiais "." e ".." para a lista ficar limpa
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        if (strcmp(entrada->d_name, ".") == 0 || strcmp(entrada->d_name, "..") == 0)
         {
             continue;
         }
 
         // escreve o nome do ficheiro ou da pasta na consola
-        write(STDOUT_FILENO, entry->d_name, strlen(entry->d_name));
+        write(STDOUT_FILENO, entrada->d_name, strlen(entrada->d_name));
 
-        // 4. Distinguir entre ficheiro e diretoria
-        // vê se o ficheiro é diretoria ou não (DT_DIR é uma constante). Se entry->d_type for DT_DIR é porque é uma diretoria
-        if (entry->d_type == DT_DIR)
+        // distingue entre ficheiro e diretoria
+        if (entrada->d_type == DT_DIR)
         {
-            write(STDOUT_FILENO, "  (Directory)\n", 14);
+            write(STDOUT_FILENO, "  (Diretoria)\n", sizeof("  (Diretoria)\n") - 1);
         }
         else
         {
-            write(STDOUT_FILENO, "   (File)\n", 10);
+            write(STDOUT_FILENO, "   (Ficheiro)\n", sizeof("   (Ficheiro)\n") - 1);
         }
     }
 
-    // 5. Fechar a diretoria
-    closedir(dir);
+    // fecha a diretoria
+    closedir(diretoria);
 
     return 0;
 }

@@ -1,60 +1,51 @@
-#include <fcntl.h>    // Necessário para as flags open() 
-#include <unistd.h>   // Necessário para read, write, close e constantes
-#include <string.h>   // Apenas para strlen() no cálculo das mensagens de erro
-#include <stdlib.h>   // Para a função exit() 
+#include <fcntl.h>    // necessário para as opções de open()
+#include <unistd.h>   // necessário para read, write, close e constantes
 #include <sys/stat.h>
 #include <sys/types.h>
 
 
-#define BUFFER_SIZE 1024
+#define TAMANHO_BLOCO 1024
 
-int main(int argc, char *argv[]) {
-    // 1. Validar se foram passados exatamente 2 argumentos (origem e destino)
-    if (argc != 3) {
-        write(STDERR_FILENO, "Error: Its needed 2 files.\n", 27);
+int main(int numero_argumentos, char *argumentos[]) {
+    // valida se foram passados exatamente 2 argumentos (origem e destino)
+    if (numero_argumentos != 3) {
+        write(STDERR_FILENO, "Erro: sao necessarios 2 ficheiros.\n", sizeof("Erro: sao necessarios 2 ficheiros.\n") - 1);
         return 1;
     }
 
-    // 2. Abrir o ficheiro de origem em modo de leitura (O_RDONLY)
-    int fd_source = open(argv[1], O_RDONLY); 
-    if (fd_source == -1) {
-        write(STDERR_FILENO, "Error: Source file does not exist.\n", 35);
+    // abre o ficheiro de origem em modo de leitura
+    int descritor_origem = open(argumentos[1], O_RDONLY);
+    if (descritor_origem == -1) {
+        write(STDERR_FILENO, "Erro: o ficheiro de origem nao existe.\n", sizeof("Erro: o ficheiro de origem nao existe.\n") - 1);
         return 1;
     }
 
-    // 3. Abrir o ficheiro de destino
-    // O_WRONLY: Modo de escrita 
-    // O_CREAT: Cria o ficheiro se não existir 
-    // O_EXCL: Garante que o comando falha se o ficheiro já existir (conforme enunciado parte 1b)
-    // S_IRUSR | S_IWUSR: Define permissões de leitura/escrita para o dono
-    int fd_destination = open(argv[2], O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    if (fd_destination == -1) 
+    // abre o ficheiro de destino e falha se ele já existir
+    int descritor_destino = open(argumentos[2], O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (descritor_destino == -1)
     {
-        write(STDERR_FILENO, "Error: Destination file already exists or can not be created\n", 61);
-        close(fd_destination);
+        write(STDERR_FILENO, "Erro: o ficheiro de destino ja existe ou nao pode ser criado.\n", sizeof("Erro: o ficheiro de destino ja existe ou nao pode ser criado.\n") - 1);
+        close(descritor_origem);
         return 1;
     }
 
-    // 4. Ciclo de transferência (Read e Write)
-    char buffer[BUFFER_SIZE];
-    ssize_t ReadedBytes;
-    // Lê da origem e coloca no buffer 
-    while ((ReadedBytes = read(fd_source, buffer, sizeof(buffer))) > 0) 
+    // copia blocos de dados da origem para o destino
+    char bloco[TAMANHO_BLOCO];
+    ssize_t bytes_lidos;
+    while ((bytes_lidos = read(descritor_origem, bloco, sizeof(bloco))) > 0)
     {
-        // Escreve o que está no buffer para o destino
-        if (write(fd_destination, buffer, ReadedBytes) != ReadedBytes) 
+        if (write(descritor_destino, bloco, bytes_lidos) != bytes_lidos)
         {
-            char *erro_critico = "Erro critico na escrita do ficheiro.\n";
-            write(STDERR_FILENO, "Error writing to destination file.\n", 34);
-            close(fd_source);
-            close(fd_destination);
+            write(STDERR_FILENO, "Erro ao escrever no ficheiro de destino.\n", sizeof("Erro ao escrever no ficheiro de destino.\n") - 1);
+            close(descritor_origem);
+            close(descritor_destino);
             return 1;
         }
     }
 
-    // 5. Fechar os descritores para libertar recursos 
-    close(fd_source);
-    close(fd_destination);
+    // fecha os descritores para libertar recursos
+    close(descritor_origem);
+    close(descritor_destino);
 
     return 0;
 }

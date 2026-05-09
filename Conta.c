@@ -1,91 +1,104 @@
-#include <unistd.h>   // permite usar read, write e close
-#include <fcntl.h>    // permite usar open
+#include <unistd.h>
+#include <fcntl.h>
 
-#define BUFFER 1024   // tamanho do bloco de leitura
+#define TAMANHO_BLOCO 1024
 
-// escreve uma string para o ecrã (stdout)
-void write_str(char *str) {
-    while (*str) write(1, str++, 1); // escreve caracter a caracter
+void escrever_texto(char *texto)
+{
+    while (*texto)
+        write(1, texto++, 1);
 }
 
-// escreve um número inteiro (substitui o printf)
-void write_int(int n) {
-    char buf[20];
-    int i = 0;
+void escrever_inteiro(int numero)
+{
+    char digitos[20];
+    int indice = 0;
 
-    // caso especial: número 0
-    if (n == 0) {
+    if (numero == 0)
+    {
         write(1, "0", 1);
         return;
     }
 
-    // converte o número para caracteres (ao contrário)
-    while (n > 0) {
-        buf[i++] = (n % 10) + '0';
-        n /= 10;
+    while (numero > 0)
+    {
+        digitos[indice++] = (numero % 10) + '0';
+        numero /= 10;
     }
 
-    // escreve os caracteres na ordem correta
-    while (i--) write(1, &buf[i], 1);
+    while (indice--)
+        write(1, &digitos[indice], 1);
 }
 
-int main(int argc, char *argv[]) {
+int main(int numero_argumentos, char *argumentos[])
+{
+    // Por defeito, lê da entrada padrão (teclado ou redirecionamento <)
+    int descritor_ficheiro = 0;
 
-    // verifica se foi passado exatamente 1 argumento (programa + ficheiro)
-    if (argc != 2) {
-        write(2, "Uso: conta <ficheiro>\n", 22); // mensagem de erro
-        return 1; // termina com erro
-    }
-
-    // abre o ficheiro em modo leitura
-    int fd = open(argv[1], O_RDONLY);
-
-    if (fd < 0) {
-        // erro se o ficheiro não existir
-        write(2, "Erro: ficheiro nao existe\n", 27);
+    // Se receber argumentos a mais, mostra erro
+    if (numero_argumentos > 2)
+    {
+        write(2, "Uso: conta [ficheiro]\n", sizeof("Uso: conta [ficheiro]\n") - 1);
         return 1;
     }
 
-    char buf[BUFFER];
-    int bytes;
+    // Se receber o nome do ficheiro, abre esse ficheiro
+    if (numero_argumentos == 2)
+    {
+        descritor_ficheiro = open(argumentos[1], O_RDONLY);
+
+        if (descritor_ficheiro < 0)
+        {
+            write(2, "Erro: ficheiro nao existe\n", sizeof("Erro: ficheiro nao existe\n") - 1);
+            return 1;
+        }
+    }
+
+    char bloco[TAMANHO_BLOCO];
+    int bytes_lidos;
 
     int linhas = 0, palavras = 0, caracteres = 0;
-    int dentro_palavra = 0; // indica se estamos dentro de uma palavra
+    int dentro_palavra = 0;
 
-    // lê o ficheiro em blocos
-    while ((bytes = read(fd, buf, BUFFER)) > 0) {
-        for (int i = 0; i < bytes; i++) {
-            char c = buf[i];
+    while ((bytes_lidos = read(descritor_ficheiro, bloco, TAMANHO_BLOCO)) > 0)
+    {
+        for (int indice = 0; indice < bytes_lidos; indice++)
+        {
+            char caracter = bloco[indice];
 
-            caracteres++; // conta todos os caracteres
+            caracteres++;
 
-            if (c == '\n')
-                linhas++; // conta linhas
+            if (caracter == '\n')
+                linhas++;
 
-            // verifica separadores (espaço, enter, tab)
-            if (c == ' ' || c == '\n' || c == '\t') {
+            if (caracter == ' ' || caracter == '\n' || caracter == '\t')
+            {
                 dentro_palavra = 0;
-            } else if (!dentro_palavra) {
-                // início de nova palavra
+            }
+            else if (!dentro_palavra)
+            {
                 palavras++;
                 dentro_palavra = 1;
             }
         }
     }
 
-    close(fd); // fecha o ficheiro
+    // Só fecha o descritor se tivermos aberto um ficheiro específico
+    if (descritor_ficheiro != 0)
+    {
+        close(descritor_ficheiro);
+    }
 
-    // mostra os resultados
-    write_str("Linhas: ");
-    write_int(linhas);
+    escrever_texto("Linhas: ");
+    escrever_inteiro(linhas);
 
-    write_str("\nPalavras: ");
-    write_int(palavras);
+    escrever_texto("\nPalavras: ");
+    escrever_inteiro(palavras);
 
-    write_str("\nCaracteres: ");
-    write_int(caracteres);
+    escrever_texto("\nCaracteres: ");
+    escrever_inteiro(caracteres);
 
-    write_str("\n");
+    escrever_texto("\n");
 
-    return 0; // terminou com sucesso
+    return 0;
 }
